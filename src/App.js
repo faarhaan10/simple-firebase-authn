@@ -1,4 +1,4 @@
-import { getAuth, signInWithPopup, GoogleAuthProvider , GithubAuthProvider , createUserWithEmailAndPassword  , signOut } from "firebase/auth";
+import { getAuth, signInWithPopup, GoogleAuthProvider , GithubAuthProvider , createUserWithEmailAndPassword , sendPasswordResetEmail , signInWithEmailAndPassword , sendEmailVerification , updateProfile , signOut } from "firebase/auth";
 import initializeAuthn from './Firebase/firebase.Initialize';
 import './App.css'
 import { useState } from "react";
@@ -63,15 +63,17 @@ function App() {
   
     };
   
-  
+    const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [islogin, setIsLogin] = useState(false);
 
     const handleSubmit = (e) => {
       e.preventDefault();
       console.log(email,password);
       if(password.length > 6){
+        /* 
         if(/(?=.*[A-Z].*[A-Z])/.test(password)){
           if(/(?=.*[a-z].*[a-z].*[a-z])/.test(password)){
             if(/(?=.*[0-9].*[0-9])/.test(password)){
@@ -93,13 +95,29 @@ function App() {
           setError('Password Must Includes at least two upper-case letter');
           return;
         }
+ */
       }else{
         setError('Password Must Be 6 Characters Long');
         return;
       }
+      islogin ? userLoggin(email , password) :newRegister(email, password);
+  
+    };
+
+    const userLoggin = (email , password) => {
+      signInWithEmailAndPassword(auth, email, password)
+      .then(result => {
+        console.log(result.user);
+      })
+      .catch((error) => {
+        setError(error.message);
+      });
+    }
+    
+
+    const newRegister = (email, password) => {
       createUserWithEmailAndPassword(auth, email, password)
       .then(result => {
-        console.log(result.user)
         const {displayName,email,photoURL} = result.user;
         const newUser = {
           name: displayName,
@@ -107,14 +125,51 @@ function App() {
           image: photoURL
         };
         setUser(newUser);
+        emailVarification();
+        updateUserProfile();
         console.log('newUser',newUser);
       })
       .catch(error => {
         const errorMessage = error.message;
         console.log(errorMessage)
       })
-  
-    };
+    }
+
+    const emailVarification = () => {
+      sendEmailVerification(auth.currentUser)
+        .then(result => {
+          console.log(result)
+        });
+    }
+
+    const resetPassword = () => {
+      sendPasswordResetEmail(auth, email)
+      .then(result => {
+        console.log(result)
+      })
+      .catch((error) => {
+        setError(error.message)
+      });
+    }
+
+    const updateUserProfile = () => {
+      updateProfile(auth.currentUser, {
+        displayName: name
+      }).then(result => {
+console.log(result)
+      }).catch((error) => {
+        setError(error.message)
+      });
+    }
+    const toggleLogin = e => {
+      setIsLogin(e.target.checked);
+    }
+
+    
+
+    const handleName = e => {
+        setName(e.target.value);
+    }
 
 
     const handleEmail = e => {
@@ -145,7 +200,14 @@ return (
           </div>
         }
         <div className="container">
+          <h1 className="text-primary">Please {islogin ? 'Login' : 'Register'}</h1>
             <form className="w-50" onSubmit={handleSubmit}>
+
+            {/* name  */}
+                {!islogin && <div className="mb-3">
+                    <label htmlFor="exampleInputName" className="form-label">Name</label>
+                    <input onBlur={handleName} type="text" className="form-control"/>
+                </div>}
 
             {/* email  */}
                 <div className="mb-3">
@@ -160,8 +222,8 @@ return (
                     <input onBlur={handlePassword} type="password" className="form-control" id="exampleInputPassword1"/>
                 </div>
                 <div className="mb-3 form-check">
-                    <input type="checkbox" className="form-check-input" id="exampleCheck1"/>
-                    <label className="form-check-label" htmlFor="exampleCheck1">Check me out</label>
+                    <input onChange={toggleLogin} type="checkbox" className="form-check-input" id="exampleCheck1"/>
+                    <label className="form-check-label" htmlFor="exampleCheck1">Already Registered?</label>
                 </div>
                 {/* {
                   error.length ? <div className="text-danger">{error}</div>
@@ -169,8 +231,10 @@ return (
                   <div className="text-danger"></div>
                 } */}
                 <div className="text-danger">{error}</div>
-                <button type="submit" className="btn btn-primary">Register</button>
+                <button type="submit" className="btn btn-primary">{islogin ? 'Login' : 'Register'}</button>
+                <br /> 
             </form>
+                <button className="btn btn-danger" onClick={resetPassword}>Forget Password</button>
         </div>
         <hr />
         <br /><br /><br />
